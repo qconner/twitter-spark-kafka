@@ -12,9 +12,9 @@ trait Libraries {
   lazy val typesafeConfig     = "com.typesafe"                    % "config"                      % "1.3.3"
 
   // 2.3.1 spark is out
-  lazy val sparkCore          = "org.apache.spark"               %% "spark-core"                  % "2.2.2"     % "provided"
-  lazy val sparkSQL           = "org.apache.spark"               %% "spark-sql"                   % "2.2.2"     % "provided"
-  lazy val sparkStreaming     = "org.apache.spark"               %% "spark-streaming"             % "2.2.2"     % "provided"
+  lazy val sparkCore          = "org.apache.spark"               %% "spark-core"                  % "2.2.2"//     % "provided"
+  lazy val sparkSQL           = "org.apache.spark"               %% "spark-sql"                   % "2.2.2"//     % "provided"
+  lazy val sparkStreaming     = "org.apache.spark"               %% "spark-streaming"             % "2.2.2"//     % "provided"
   //lazy val sparkMesos         = "org.apache.spark"               %% "spark-mesos"                 % "2.2.2"
 
   // twitter stream (Consumer)
@@ -28,8 +28,6 @@ trait Libraries {
   lazy val circeGeneric       = "io.circe"                       %% "circe-generic"                   % "0.9.3"
   lazy val circeParser        = "io.circe"                       %% "circe-parser"                   % "0.9.3"
   //lazy val akkaHttpCirce      = "de.heikoseeberger"              %% "akka-http-circe"                 % "1.21.0"
-
-
 }
 
 object Dependencies extends Libraries {

@@ -25,17 +25,16 @@ import org.apache.spark.streaming.twitter.TwitterUtils
 
 
 trait Greeting {
-  lazy val greeting: String = "Twitter Consumer --> Kafka Producer"
+  lazy val greeting: String = "Twitter Kafka Gateway"
 }
-
-object Boot extends Greeting
-    with App {
-  println(greeting)
-
-}
-object Booty extends App with StrictLogging {
+object Boot
+    extends App
+    with StrictLogging
+    with Greeting {
 
   override def main(args: Array[String]) = {
+
+    println(greeting)
 
     // default config in src/main/resources.application.conf
     val baseConfig = ConfigFactory.load()
@@ -140,7 +139,7 @@ object Booty extends App with StrictLogging {
     logger.debug("creating Spark context")
 
     val sc = new SparkConf()
-        .setAppName("Twitter Ingest")
+        .setAppName(greeting)
         .set("spark.streaming.receiverRestartDelay", conf.getString("stream-restart-delay-in-msec"))
     logger.debug(sc.toDebugString)
 
