@@ -27,6 +27,14 @@ import org.apache.spark.streaming.twitter.TwitterUtils
 trait Greeting {
   lazy val greeting: String = "Twitter Kafka Gateway"
 }
+object StaticConfig {
+  // default config in src/main/resources.application.conf
+  private val baseConfig = ConfigFactory.load()
+
+  // local config settings in environment.conf
+  val config = ConfigFactory.parseFile(new File("environment.conf")).withFallback(baseConfig)
+}
+
 object Boot
     extends App
     with StrictLogging
@@ -36,13 +44,9 @@ object Boot
 
     println(greeting)
 
-    // default config in src/main/resources.application.conf
-    val baseConfig = ConfigFactory.load()
-
-    // local config settings in environment.conf
-    val config = ConfigFactory.parseFile(new File("environment.conf")).withFallback(baseConfig)
 
     // twitter API 
+    val config = StaticConfig.config
     val twitterConf = config.getConfig("twitter")
     configureTwitter(twitterConf)
 
@@ -52,70 +56,76 @@ object Boot
     logger.info("Connecting to Twitter streaming API")
 
     // RRD batch period in secs
-    val ssPeriod = config.getConfig("spark").getInt("period-in-secs")
-    val (ssc, stream) = twitterStream(twitterConf, filters, ssPeriod)
+    val sparkConf = config.getConfig("spark")
+    val ssPeriod = sparkConf.getInt("period-in-secs")
+    val (ssc, stream) = twitterStream(twitterConf, sparkConf, filters, ssPeriod)
 
-    // extract text from Tweet (Twitter status update)
+    // extract text from all tweets
+    // .filter(_.getLang == "en")
     val tweets: DStream[String] = stream map { x =>
       //println(x.getCreatedAt + "  " + x.getText take 168)
-      x.getText
+      //println(x.getId)
+      //println(x.getContributors)
+      //println(x.getCreatedAt)
+      //println(x.getUser)
+      //println(x.getPlace)
+      //println(x.getGeoLocation)
+      x.getText.replaceAll("\n", "  ")  // replace newlines with spaces
     }
 
-    // extract hashtags from status text
-    val hashtags: DStream[String] = stream flatMap { x =>
-    
-      // split tweet on whitespace
-      val words: Array[String] = x.getText.split("\\s+")
-
-      //
-      // keep words starting with #
-      // but convert to lower case
-      // and drop trailing punctuation (e.g. comma)
-      // and drop trailing ellipsis (...)
-      //
-      val raw = words.filter(_.startsWith("#"))
-      val cooked = raw.map(_.trim.toLowerCase.replaceAll("""[\p{Punct}\u2026]+$""", ""))
-      // filter out empty strings
-      cooked.filter(_.size > 0)
-    }
+    // partition into two more streams
+    val reTweets = stream filter (_.isRetweet == true) map (_.getText.replaceAll("\n", "  "))  // replace newlines with spaces
+    val originalTweets = stream filter (_.isRetweet == false) map (_.getText.replaceAll("\n", "  "))  // replace newlines with spaces
 
     // tweet occurrences
     val tweetCount: DStream[Int] = tweets.map(x => 1).reduceByWindow( (x, y) => x + y, Seconds(ssPeriod), Seconds(ssPeriod))
+    val originalTweetCount: DStream[Int] = originalTweets.map(x => 1).reduceByWindow( (x, y) => x + y, Seconds(ssPeriod), Seconds(ssPeriod))
+    val reTweetCount: DStream[Int] = reTweets.map(x => 1).reduceByWindow( (x, y) => x + y, Seconds(ssPeriod), Seconds(ssPeriod))
 
-    // hashtag occurrences
-    val hashtagCount: DStream[Int] = hashtags.map(x => 1).reduceByWindow( (x: Int, y: Int) => x + y, Seconds(ssPeriod), Seconds(ssPeriod))
+    // forward original tweets to kafka
+    originalTweets foreachRDD { rdd =>
+      rdd.collect.map( t => {
+        // fire off future to send to kafka
+        if (t.size > 0) {
+          val f = Producer.sendTweet(t)
+        }
+      })
+    }
 
-    // add up matching hashtag counts, within the specified time period
-    val hashtagCounts = hashtags.map((_, 1)).reduceByKeyAndWindow(_ + _, Seconds(ssPeriod))
+    // forward re-tweets to a different kafka topic
+    reTweets foreachRDD { rdd =>
+      rdd.collect.map( t => {
+        // fire off future to send to kafka
+        if (t.size > 0) {
+          val f = Producer.sendReTweet(t)
+        }
+      })
+    }
 
     // print item counts
     tweetCount foreachRDD { rdd: RDD[Int] =>
       rdd.collect.size match {
         case x if (x > 0) =>
           val n = rdd.collect.head
-          print("\n%d tweets".format(n) + " (%.1f/sec)".format(n.toDouble / ssPeriod) + " (%.1f/min)".format(n.toDouble / ssPeriod * 60.0))
+          print("%3d tweets".format(n) + " (%.1f/sec)".format(n.toDouble / ssPeriod) + " (%.1f/min)".format(n.toDouble / ssPeriod * 60.0))
         case _ =>
       }
     }
-    hashtagCount foreachRDD { rdd: RDD[Int] =>
+    originalTweetCount foreachRDD { rdd: RDD[Int] =>
       rdd.collect.size match {
-        case x if (x > 0) => println(" contained %d hashtags" format rdd.collect.head)
-        case _ => println
+        case x if (x > 0) =>
+          val n = rdd.collect.head
+          print("  %3d original tweets".format(n))
+        case _ =>
       }
     }
-
-
-    // print out top N
-    val N = config.getConfig("hashtag").getInt("top-N")
-    hashtagCounts foreachRDD { rdd: RDD[(String, Int)] =>
-
-      println("TOP %d hashtags out of %d unique:" format (N, rdd.collect.size)) 
-
-      rdd.sortBy(_._2, false).collect take N foreach {
-        case (tag, count) =>
-        println("%3d  %s" format (count, tag))
+    reTweetCount foreachRDD { rdd: RDD[Int] =>
+      rdd.collect.size match {
+        case x if (x > 0) =>
+          val n = rdd.collect.head
+          println("  %3d re-tweets".format(n))
+        case _ =>
       }
-      println
     }
 
     // start the spark job
@@ -135,13 +145,14 @@ object Boot
   }
 
   // return a Spark Streaming Context and Spark DStream of tweets
-  def twitterStream(conf: Config, filters: List[String], period: Int): (StreamingContext, InputDStream[twitter4j.Status]) = {
+  def twitterStream(twitterConf: Config, sparkConf: Config, filters: List[String], period: Int): (StreamingContext, InputDStream[twitter4j.Status]) = {
     logger.debug("creating Spark context")
 
     val sc = new SparkConf()
-        .setAppName(greeting)
-        .set("spark.streaming.receiverRestartDelay", conf.getString("stream-restart-delay-in-msec"))
-    logger.debug(sc.toDebugString)
+      .setAppName(greeting)
+      .set("spark.streaming.receiverRestartDelay", twitterConf.getString("stream-restart-delay-in-msec"))
+      .set("spark.master", sparkConf.getString("master"))
+    logger.info(sc.toDebugString)
 
     val ssc = new StreamingContext(sc, Seconds(period))
 

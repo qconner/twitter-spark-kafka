@@ -19,9 +19,15 @@
         </encoder>
     </appender>
 
-    <logger name="com.amd" level="${LOG_LEVEL:-info}" />
+    <logger name="net.qns.delphinus" level="${LOG_LEVEL:-info}" />
+    <logger name="org" level="${LOG_LEVEL:-info}" />
+    <logger name="com" level="${LOG_LEVEL:-info}" />
+    <logger name="io" level="${LOG_LEVEL:-info}" />
+    <logger name="org.spark_project" level="${LOG_LEVEL:-warn}" />
+    <logger name="org.apache.spark" level="${LOG_LEVEL:-warn}" />
+    <logger name="org.apache.spark.storage" level="${LOG_LEVEL:-error}" />
 
-    <root level="INFO">
+    <root level="${ROOT_LOG_LEVEL:-INFO}">
       <appender-ref ref="STDOUT" />
       <appender-ref ref="FILE" />
     </root>
