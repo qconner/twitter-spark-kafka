@@ -6,6 +6,7 @@ import java.io.File
 // Scala
 //import scala.util.{Try, Success, Failure}
 import collection.JavaConversions._
+import scala.util.matching.Regex
 
 // typesafe / lightbend config
 import com.typesafe.config.{Config, ConfigFactory}
@@ -61,8 +62,7 @@ object Boot
     val (ssc, stream) = twitterStream(twitterConf, sparkConf, filters, ssPeriod)
 
     // extract text from all tweets
-    // .filter(_.getLang == "en")
-    val tweets: DStream[String] = stream map { x =>
+    val tweets: DStream[String] = stream filter (_.getLang == "en") map { x =>
       //println(x.getCreatedAt + "  " + x.getText take 168)
       //println(x.getId)
       //println(x.getContributors)
@@ -87,20 +87,44 @@ object Boot
       rdd.collect.map( t => {
         // fire off future to send to kafka
         if (t.size > 0) {
-          val f = Producer.sendTweet(t)
+          Producer.sendTweet(t)
         }
+      })
+    }
+
+    def topTenFormat(xs: List[(String, Int)]): List[String] = {
+      xs map ( t => {
+        val count = t._2
+        val rt = t._1
+        val pattern = new Regex("""^RT\s@(\w+):\s(.+)$""")
+        val (who, what) = rt match {
+          case pattern(match1, match2) =>
+            ( match1, match2 )
+          case _ =>
+            throw new Exception("could not parse: " + rt)
+        }
+        val url = s"http://twitter.com/${who}"
+        "%3d: %-20s  %s".format(count, url, what)
       })
     }
 
     // forward re-tweets to a different kafka topic
     reTweets foreachRDD { rdd =>
-      rdd.collect.map( t => {
+      val xs = rdd.collect
+      xs.map( t => {
         // fire off future to send to kafka
         if (t.size > 0) {
-          val f = Producer.sendReTweet(t)
+          Producer.sendReTweet(t)
         }
       })
+      val tt = xs.groupBy(identity).mapValues(_.size).toList.sortBy(_._2)(Ordering[Int].reverse).take(32)
+      //filter(_._2 > 1)
+      Producer.sendTopReTweets("")
+      topTenFormat(tt).foreach {
+        Producer.sendTopReTweets(_)
+      }
     }
+
 
     // print item counts
     tweetCount foreachRDD { rdd: RDD[Int] =>

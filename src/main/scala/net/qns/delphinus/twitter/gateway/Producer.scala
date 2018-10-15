@@ -33,6 +33,7 @@ object Producer
   lazy private val kafkaConfig = StaticConfig.config.getConfig("kafka")
   lazy private val tweetTopicText = kafkaConfig.getString("tweet-topic-text")
   lazy private val reTweetTopicText = kafkaConfig.getString("retweet-topic-text")
+  lazy private val reTweetTopTenTopicText = kafkaConfig.getString("retweet-top-ten-topic-text")
 
   // get the singleton KafkaProducer
   lazy val producer: KafkaProducer[String, String] = {
@@ -58,6 +59,10 @@ object Producer
   // re-tweet
   def sendReTweet(x: String) = send(x, Producer.reTweetTopicText)
 
+  // re-tweet top ten
+  def sendTopReTweets(x: String) = send(x, Producer.reTweetTopTenTopicText)
+
+
   // send text to Kafka
   private def send(x: String, topic: String): Unit = {
     val rec = new ProducerRecord[String, String](topic, KeyGenerator.get, x)
@@ -78,6 +83,6 @@ object Producer
     }
      */
   }
+
+
 }
-
-
