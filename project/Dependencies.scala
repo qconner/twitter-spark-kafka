@@ -15,7 +15,7 @@ trait Libraries {
   lazy val sparkCore          = "org.apache.spark"               %% "spark-core"                  % "2.2.2"//     % "provided"
   lazy val sparkSQL           = "org.apache.spark"               %% "spark-sql"                   % "2.2.2"//     % "provided"
   lazy val sparkStreaming     = "org.apache.spark"               %% "spark-streaming"             % "2.2.2"//     % "provided"
-  //lazy val sparkMesos         = "org.apache.spark"               %% "spark-mesos"                 % "2.2.2"
+
 
   // twitter stream (Consumer)
   lazy val twitter            = "org.apache.bahir"               %% "spark-streaming-twitter"     % "2.2.1"
