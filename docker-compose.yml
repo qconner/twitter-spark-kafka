@@ -1,0 +1,22 @@
+version: "3"
+services:
+  tsk-service:
+    # twitter streaming API gateway to Kafka
+    build:
+      context: .
+    image: qconner/twitter-spark-kafka
+    ports:
+      - "4040:4040"
+    networks:
+      - sparknet
+    environment:
+      - TWIT_CONSUMER_API_KEY=wwwwwwwwwwwwwwwwwwwwwwwww
+      - TWIT_CONSUMER_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+      - TWIT_ACCESS_TOKEN=yyyyyyyyyyyyyyyyyy-yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+      - TWIT_ACCESS_TOKEN_SECRET=zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+      - KAFKA_BOOTSTRAP_SERVERS=localhost:9092
+      - HASHTAG_TOP_N=10
+      - TWIT_FILTER_KEYWORDS="[ worldseries, astros, dodgers ]"
+      - SPARK_PERIOD_IN_SECS=300
+networks:
+  sparknet:

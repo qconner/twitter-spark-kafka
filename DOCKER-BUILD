@@ -1,6 +1,0 @@
-#!/bin/bash
-DPATH=qconner/twitter-spark-kafka
-DVER=0.1
-DTAG=${DPATH}:${DVER}
-docker build -t ${DTAG} -f Dockerfile .
-echo docker push ${DTAG}
