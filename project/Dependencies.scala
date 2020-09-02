@@ -28,6 +28,11 @@ trait Libraries {
   lazy val circeGeneric       = "io.circe"                       %% "circe-generic"                   % "0.9.3"
   lazy val circeParser        = "io.circe"                       %% "circe-parser"                   % "0.9.3"
   //lazy val akkaHttpCirce      = "de.heikoseeberger"              %% "akka-http-circe"                 % "1.21.0"
+
+  // NewRelic
+  // https://mvnrepository.com/artifact/com.newrelic.agent.java/newrelic-api
+  lazy val newrelic           = "com.newrelic.agent.java"        %  "newrelic-api"                % "5.14.0"
+
 }
 
 object Dependencies extends Libraries {
@@ -42,6 +47,7 @@ object Dependencies extends Libraries {
       twitter,
       kafka,
       circeGeneric,
-      circeParser
+      circeParser,
+      newrelic
   )
 }

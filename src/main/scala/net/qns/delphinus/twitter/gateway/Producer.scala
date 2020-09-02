@@ -14,6 +14,8 @@ import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
 
+// NewRelic
+import com.newrelic.api.agent.NewRelic
 
 object KeyGenerator {
   val random = new Random
@@ -54,13 +56,22 @@ object Producer
   }
 
   // tweet
-  def sendTweet(x: String) = send("-- " + x, Producer.tweetTopicText)
+  def sendTweet(x: String) = {
+    send("-- " + x, Producer.tweetTopicText)
+    NewRelic.incrementCounter(s"Custom/KafkaProducer/${Producer.tweetTopicText}")
+  }
 
   // re-tweet
-  def sendReTweet(x: String) = send(x, Producer.reTweetTopicText)
+  def sendReTweet(x: String) = {
+    send(x, Producer.reTweetTopicText)
+    NewRelic.incrementCounter(s"Custom/KafkaProducer/${Producer.reTweetTopicText}")
+  }
 
   // re-tweet top ten
-  def sendTopReTweets(x: String) = send(x, Producer.reTweetTopTenTopicText)
+  def sendTopReTweets(x: String) = {
+    send(x, Producer.reTweetTopTenTopicText)
+    NewRelic.incrementCounter(s"Custom/KafkaProducer/${Producer.reTweetTopTenTopicText}")
+  }
 
 
   // send text to Kafka

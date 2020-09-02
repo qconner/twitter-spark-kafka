@@ -117,7 +117,7 @@ object Boot
           Producer.sendReTweet(t)
         }
       })
-      val tt = xs.groupBy(identity).mapValues(_.size).toList.sortBy(_._2)(Ordering[Int].reverse).take(32)
+      val tt = xs.groupBy(identity).mapValues(_.size).toList.sortBy(_._2)(Ordering[Int].reverse).take(StaticConfig.config.getConfig("hashtag").getInt("top-N"))
       //filter(_._2 > 1)
       Producer.sendTopReTweets("")
       topTenFormat(tt).foreach {
